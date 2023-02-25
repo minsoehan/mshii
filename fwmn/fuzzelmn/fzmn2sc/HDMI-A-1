@@ -1,0 +1,29 @@
+#!/bin/dash
+ck=$(cat /sys/class/drm/card0-HDMI-A-1/modes)
+if [ ! -z "$ck" ]; then
+    resxy=$(cat /sys/class/drm/card0-HDMI-A-1/modes | fuzzel -d) > /dev/null 2>&1
+    resx=$(echo "$resxy" | cut -d'x' -f1)
+    resxx=$((resx+5))
+    resy=$(echo "$resxy" | cut -d'x' -f2)
+    resyy=$((resx+5))
+    side=$(echo 'LEFT\nRIGHT' | fuzzel -d) > /dev/null 2>&1
+    case "$side" in
+        LEFT)
+            wlr-randr --output HDMI-A-1 --pos 0,$resyy --mode $resxy
+            wlr-randr --output eDP-1 --pos $resxx,0 --mode 1920x1080
+            wlr-randr --output HDMI-A-1 --pos 0,0 --mode $resxy
+            notify-send -t 5000 "Configuring External Monitor/Screen" "HDMI-A-1 has been configured\non the $side of eDP-1."
+            ;;
+        RIGHT)
+            wlr-randr --output HDMI-A-1 --pos 0,$resyy --mode $resxy
+            wlr-randr --output eDP-1 --pos 0,0 --mode 1920x1080
+            wlr-randr --output HDMI-A-1 --pos 1925,0 --mode $resxy
+            notify-send -t 5000 "Configuring External Monitor/Screen" "HDMI-A-1 has been configured\non the $side of eDP-1."
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+else
+    notify-send -t 5000 "No External Monitor/Screen" "HDMI-A-1 is not pluged in."
+fi > /dev/null 2>&1

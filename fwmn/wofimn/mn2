@@ -1,0 +1,6 @@
+#!/bin/dash
+
+fdir="$(dirname "$(readlink -f "$0")")"
+
+sel=$(ls "$fdir"/womn2sc | wofi -d)
+[ ! -z "$sel" ] && "$fdir"/womn2sc/"$sel"

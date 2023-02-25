@@ -1,0 +1,16 @@
+#!/bin/dash
+
+fdir="$(dirname "$(readlink -f "$0")")"
+bdir="$(dirname "$fdir")"
+
+while true; do
+    open=$(ls "$bdir"/mndicsrc | bemenu -p "mshDic: ")
+	if [ -d "$open" ]; then
+		cd "$open"
+	else
+        if [ ! -z "$open" ]; then
+            xdg-open "$bdir"/mndicsrc/"$open" &
+        fi
+		break
+	fi
+done

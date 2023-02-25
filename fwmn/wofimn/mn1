@@ -1,0 +1,84 @@
+#!/bin/dash
+
+fdir="$(dirname "$(readlink -f "$0")")"
+bdir="$(dirname "$fdir")"
+
+ckfd=$(echo "Dictionary
+Search Folder
+Search File
+Search Both
+Browse" | wofi -d)
+
+skwhistory () {
+    skw=$(cat "$bdir"/mnlogs/search-history | wofi -d)
+    [ ! -z "$skw" ] &&
+        (echo "$skw" && cat "$bdir"/mnlogs/search-history) | awk '!_[$0]++' | head -n 7 > "$bdir"/mnlogs/search-history-tmp &&
+        mv "$bdir"/mnlogs/search-history-tmp "$bdir"/mnlogs/search-history
+}
+
+case "$ckfd" in
+    "Dictionary")
+        cd "$bdir/mndicsrc"
+        dicopen=$(ls . | wofi -d)
+        if [ ! -z "$dicopen" ]; then
+            xdg-open "$dicopen" &
+        fi
+        exit 0
+        ;;
+    "Search Folder")
+        skwhistory
+        dopen=$(find ~ -type d -iname "*$skw*" | wofi -d)
+        cd "$dopen"
+        while true; do
+            open=$(ls -a --group-directories-first --file-type -- . | grep -v "^\.[a-zA-Z0-9]\|^\./" | wofi -d)
+            if [ -d "$open" ]; then
+                cd "$open"
+            else
+                if [ ! -z "$open" ]; then
+                    xdg-open "$open" &
+                fi
+                break
+            fi
+        done
+        ;;
+    "Search File")
+        skwhistory
+        fopen=$(find ~ -type f -iname "*$skw*" | wofi -d)
+        if [ -f "$fopen" ]; then
+            xdg-open "$fopen" &
+        fi
+        exit 0
+        ;;
+    "Search Both")
+        skwhistory
+        cd ~
+        while true; do
+            open=$(find . -iname "*$skw*" | wofi -d)
+            if [ -d "$open" ]; then
+                cd "$open"
+            else
+                if [ ! -z "$open" ]; then
+                    xdg-open "$open" &
+                fi
+                break
+            fi
+        done
+        ;;
+    "Browse")
+        cd ~
+        while true; do
+            open=$(ls -a --group-directories-first --file-type -- . | grep -v "^\.[a-zA-Z0-9]\|^\./" | wofi -d)
+            if [ -d "$open" ]; then
+                cd "$open"
+            else
+                if [ ! -z "$open" ]; then
+                    xdg-open "$open" &
+                fi
+                break
+            fi
+        done
+        ;;
+    *)
+        exit 0
+        ;;
+esac

@@ -1,0 +1,5 @@
+#!/bin/dash
+notify-send -t 7000 "Default Audio Output (sink)" "$(pactl get-default-sink)"
+sel=$(pactl list short sinks | cut -f2 | bemenu -p "mshMenu: ")
+[ ! -z "$sel" ] && pactl set-default-sink "$sel" && \
+    notify-send -t 7000 "Default Audio Output (sink)" "$(pactl get-default-sink)"

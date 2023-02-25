@@ -1,0 +1,13 @@
+#!/bin/dash
+
+while true; do
+	open=$(ls -a --group-directories-first --file-type | grep -v "^\.[a-zA-Z0-9]\|^\./" | bemenu -p "mshMenu: ")
+	if [ -d "$open" ]; then
+		cd "$open"
+	else
+        if [ ! -z "$open" ]; then
+            xdg-open "$open" &
+        fi
+		break
+	fi
+done

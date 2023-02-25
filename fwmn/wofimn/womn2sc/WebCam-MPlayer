@@ -1,0 +1,12 @@
+#!/bin/dash
+
+wcsel=$(echo "video0 (Built-In)\nvideo2 (External)" | wofi -d)
+if [ "$wcsel" = "video0 (Built-In)" ]; then
+    mplayer -title "mshcfloat" tv:// -tv driver=v4l2:width=450:height=350:device=/dev/video0 -fps 60 -vf screenshot &
+else
+    if [ -f /dev/video2 ]; then
+        mplayer -title "mshcfloat" tv:// -tv driver=v4l2:width=450:height=350:device=/dev/video2 -fps 60 -vf screenshot &
+    else
+        notify-send -t 5000 "No Device" "External webcam is NOT connected."
+    fi
+fi & > /dev/null 2>&1

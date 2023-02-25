@@ -1,0 +1,10 @@
+#!/bin/dash
+
+fdir="$(dirname "$(readlink -f "$0")")"
+
+if [ ! -z $(echo $WAYLAND_DISPLAY) ]; then
+    sel=$(ls "$fdir"/sssc | bemenu -p "mshMenu: ")
+    "$fdir"/sssc/"$sel"
+else
+    notify-send -t 7000 "No Wayland" "You are not running WAYLAND"
+fi

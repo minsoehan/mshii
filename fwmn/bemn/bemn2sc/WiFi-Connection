@@ -1,0 +1,81 @@
+#!/bin/dash
+
+oldornew=$(echo "Known Connection\nNew Connection\nRescan WiFi\nRescan WiFi & nmtui\nNoscan WiFi & nmtui\nCheck Current SSID Password" | bemenu -p "mshConnection: ")
+
+case "$oldornew" in
+    "Known Connection")
+        celcon=$(nmcli --fields UUID,NAME,TYPE,DEVICE connection show | grep -v UUID | bemenu -p "mshConnection: ")
+        if [ ! -z "$celcon" ]; then
+            seluuid=$(echo "$celcon" | awk '{print $1}')
+            actdeadel=$(echo "Activate\nDeactivate\nPassword\nDelete" | bemenu -p "mshConnection: ")
+            case "$actdeadel" in
+                Activate)
+                    nmcli connection up "$seluuid" > /dev/null 2>&1
+                    ;;
+                Deactivate)
+                    nmcli connection down "$seluuid" > /dev/null 2>&1
+                    ;;
+                Password)
+                    psk=$(nmcli --show-secrets connection show "$seluuid" | grep security.psk:)
+                    notify-send -t 7000 " " "$psk\n_"
+                    ;;
+                Delete)
+                    nmcli connection delete "$seluuid" > /dev/null 2>&1
+                    ;;
+                *)
+                    exit 0
+                    ;;
+            esac
+        else
+            exit 0
+        fi
+        ;;
+    "New Connection")
+        fields=SSID,BSSID,SECURITY,BARS,IN-USE
+        selssid=$(nmcli --fields "$fields" device wifi list --rescan yes | grep -v BSSID | bemenu -p "mshConnection: ")
+        if [ ! -z "$selssid" ]; then
+            ssidsel=$(echo "$selssid" | awk \
+                -F ' *[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z] *' \
+                '{print $1}')
+            confirm=$(echo "Exit\nConnect to Selected SSID" | bemenu -p "mshConnection: ")
+            if [ "$confirm" = "Exit" ]; then
+                exit 0
+            else
+                askpass=$(echo "Password\nNo Password" | bemenu -p "mshConnection: ")
+                case "$askpass" in
+                    "Password")
+                        passwd=$(echo "Type your password ..." | bemenu -p "Type Password: ")
+                        if [ ! -z "$passwd" ]; then
+                            nmcli device wifi connect "$ssidsel" password "$passwd" > /dev/null 2>&1
+                        else
+                            exit 0
+                        fi
+                        ;;
+                    "No Password")
+                        nmcli device wifi connect "$ssidsel" > /dev/null 2>&1
+                        ;;
+                    *)
+                        exit 0
+                        ;;
+                esac
+            fi
+        fi
+        ;;
+    "Rescan WiFi")
+        nmcli device wifi rescan
+        notify-send -t 3000 " " "Rescanned WiFi SSID\n_"
+        ;;
+    "Rescan WiFi & nmtui")
+        nmcli device wifi rescan
+        alacritty -t "mshcfloat" -e nmtui &
+        ;;
+    "Noscan WiFi & nmtui")
+        alacritty -t "mshcfloat" -e nmtui &
+        ;;
+    "Check Current SSID Password")
+        cpsk=$(nmcli device wifi show-password)
+        notify-send -t 7000 " " "$cpsk\n_"
+        ;;
+    *)
+        exit 0
+esac

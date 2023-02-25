@@ -1,0 +1,15 @@
+#!/bin/dash
+cd ~
+while true; do
+    # to review this
+    # should use find
+	open=$(ls . -a -t --file-type | head -10 | grep -v "^\.[a-zA-Z0-9]\|^\./" | fuzzel -d) > /dev/null 2>&1
+	if [ -d "$open" ]; then
+		cd "$open"
+	else
+        if [ ! -z "$open" ]; then
+            xdg-open "$open" &
+        fi
+		break
+	fi
+done

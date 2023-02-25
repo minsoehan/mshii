@@ -1,0 +1,5 @@
+#!/bin/dash
+notify-send -t 7000 "Default Audio Input (source)" "$(pactl get-default-source)"
+sel=$(pactl list short sources | cut -f2 | wofi -d)
+[ ! -z "$sel" ] && pactl set-default-source "$sel" && \
+    notify-send -t 7000 "Default Audio Input (source)" "$(pactl get-default-source)"
