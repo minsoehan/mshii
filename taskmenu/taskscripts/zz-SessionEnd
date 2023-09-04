@@ -1,0 +1,20 @@
+#!/bin/dash
+
+if swaymsg -t get_tree | grep app_id > /dev/null 2>&1; then
+    notify-send -t 9000 "No Clean to Poweroff or Reboot" "Check workspaces or scratchpad..."
+    exit 0
+fi
+
+pr=$(echo "Poweroff\nReboot" | wofi -d)
+
+case "$pr" in
+    Poweroff)
+        systemctl poweroff
+        ;;
+    Reboot)
+        systemctl reboot
+        ;;
+    *)
+        notify-send -t 7000 " " "Fuck You, Man!\n_"
+        exit
+esac

@@ -1,11 +1,8 @@
-# mshii
-
-This is scripts collection, especially dash scripts, of Min Soe Han for personal.
-It is free for using, editing and distributing.
-
 2023-08-29 Tuesday 16:59 04:59:31 PM
 
 $ ii help
+
+---
 
     ""|statusboard
         "$HEREDIR"/statusboard/maintoggle

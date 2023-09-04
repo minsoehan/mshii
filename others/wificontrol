@@ -1,0 +1,283 @@
+#!/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*) echo "~~~ continue..." ;;
+    *) notify-send "~~~ clean exit" "please run it in terminal."; exit 0 ;;
+esac
+
+if ! which nmcli > /dev/null 2>&1; then
+    echo "~~~ please install NetworkManager first."
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+WIFILIST="$HEREDIR"/wifilist
+NUMWIFIL="$HEREDIR"/num-wifilist
+CONNLIST="$HEREDIR"/connectionlist
+NUMCONNL="$HEREDIR"/num-connectionlist
+MAINMENU="$HEREDIR"/mainmenulist
+
+cleanhelperfiles_func () {
+    [ -f "$WIFILIST" ] && rm "$WIFILIST"
+    [ -f "$NUMWIFIL" ] && rm "$NUMWIFIL"
+    [ -f "$CONNLIST" ] && rm "$CONNLIST"
+    [ -f "$NUMCONNL" ] && rm "$NUMCONNL"
+    [ -f "$MAINMENU" ] && rm "$MAINMENU"
+}
+
+correctnumber_func () {
+    while true; do
+        case "$SELNUM" in
+            e|exit|q|quit)
+                cleanhelperfiles_func
+                echo "~~~ exit @ correctnumber_func"
+                exit 0
+                ;;
+            r|res|restart)
+                CORRECNUM="restart"
+                break
+                ;;
+            [0-9])
+                CORRECNUM=$(printf "%02d" "$SELNUM")
+                break
+                ;;
+            [0-9][0-9])
+                CORRECNUM=$SELNUM
+                break
+                ;;
+            *)
+                unset SELNUM
+                echo "~~~ WRONG: only one or two digits number is allowed."
+                read -p "~~~ Reselect Number: " SELNUM
+                ;;
+        esac
+    done
+}
+
+enterpassword_func () {
+    unset EPASSWD
+    read -p "~~~ Show Password? (y/N): " SHOWPWYN
+    case "$SHOWPWYN" in
+        y|yes|Y|Yes)
+            read -p "~~~ Enter Password (show): " EPASSWD
+            ;;
+        *)
+            echo -n "~~~ Enter Password (hide): "; stty -echo; read EPASSWD; stty echo; echo
+            ;;
+    esac
+    clear
+    echo "~~~ got entered password @ EPASSWD."
+}
+
+availablewifilist_func () {
+    local FIELDS="BSSID,SSID,SECURITY,BARS,IN-USE"
+    read -p "~~~ Rescan or not? (y/N): " RESCYN
+    case "$RESCYN" in
+        y|yes|Y|Yes)
+            nmcli --fields "$FIELDS" device wifi list --rescan yes | grep -wv ^BSSID | sed 's/*/-/g' > "$WIFILIST"
+            ;;
+        *)
+            nmcli --fields "$FIELDS" device wifi list | grep -wv ^BSSID | sed 's/*/-/g' > "$WIFILIST"
+            ;;
+    esac
+    local NUM=1
+    for i in $(cat "$WIFILIST" | sed 's/ /_/g'); do
+        local ZLNUM=$(printf "%02d" "$NUM")
+        echo ""$ZLNUM"_"$i""
+        local NUM=$((NUM+1))
+    done > "$NUMWIFIL"
+}
+
+connectwifi_func () {
+    echo "~~~ available wifi list"
+    cat "$NUMWIFIL" | cut -d '_' -f 1,3-
+    echo "~~~ e|exit|q|quit for EXIT (or) r|res|restart for RESTART"
+    while true; do
+        read -p "~~~ Select Number: " SELNUM
+        correctnumber_func
+        if [ "$CORRECNUM" = "restart" ]; then
+            clear
+            echo "~~~ restarting..."
+            sleep 1
+            break
+        fi
+        local SELBSSID=$(cat "$NUMWIFIL" | grep ^$CORRECNUM | cut -d '_' -f 2)
+        if [ -z "$SELBSSID" ]; then
+            echo "~~~ selected number is outside options."
+            continue
+        fi
+        read -p "~~~ Need Password? (Y/n): " ASKPASSWD
+        case "$ASKPASSWD" in
+            n|no|N|No)
+                clear
+                nmcli device wifi connect "$SELBSSID" && break || echo "continue for password..."
+                sleep 1
+                enterpassword_func
+                nmcli device wifi connect "$SELBSSID" password "$EPASSWD"
+                break
+                ;;
+            *)
+                enterpassword_func
+                nmcli device wifi connect "$SELBSSID" password "$EPASSWD"
+                break
+                ;;
+        esac
+    done
+}
+
+connectionlist_func () {
+    local FIELDS="UUID,NAME,TYPE,DEVICE"
+    nmcli --fields "$FIELDS" connection show | grep -wv ^UUID > "$CONNLIST"
+    local NUM=1
+    for i in $(cat "$CONNLIST" | sed 's/ /_/g'); do
+        local ZLNUM=$(printf "%02d" "$NUM")
+        echo ""$ZLNUM"_"$i""
+        local NUM=$((NUM+1))
+    done > "$NUMCONNL"
+}
+
+connectionoperations_func () {
+    echo "~~~ known connections list"
+    cat "$NUMCONNL" | cut -d '_' -f 1,3-
+    echo "~~~ e|exit|q|quit for EXIT (or) r|res|restart for RESTART"
+    while true; do
+        read -p "~~~ Select Number: " SELNUM
+        correctnumber_func
+        if [ "$CORRECNUM" = "restart" ]; then
+            clear
+            echo "~~~ restarting..."
+            sleep 1
+            return
+        fi
+        if [ "$CORRECNUM" = "restart" ]; then
+            clear
+            echo "~~~ restarting..."
+            sleep 1
+            break
+        fi
+        local SELCONN=$(cat "$NUMCONNL" | grep "^$CORRECNUM" | cut -d '_' -f 2)
+        if [ -z "$SELCONN" ]; then
+            echo "~~~ selected number is outside options."
+            continue
+        fi
+        echo "~~~ selected connection\n$(cat "$NUMCONNL" | grep "^$CORRECNUM")"
+        echo "~~~ available operations:\n00. EXIT\n01. Activate\n02. Deactivate\n03. Check Password\n04. Delete"
+        echo "~~~ e|exit|q|quit for EXIT (or) r|res|restart for RESTART"
+        read -p "~~~ Select Number: " SELNUM
+        correctnumber_func
+        case "$CORRECNUM" in
+            00)
+                cleanhelperfiles_func
+                echo "~~~ exit @ connectionoperations_func"
+                exit 0
+                ;;
+            01)
+                clear
+                nmcli connection up "$SELCONN"
+                break
+                ;;
+            02)
+                clear
+                nmcli connection down "$SELCONN"
+                break
+                ;;
+            03)
+                clear
+                echo " "
+                nmcli --show-secrets connection show "$SELCONN" | grep security.psk:
+                break
+                ;;
+            04)
+                clear
+                nmcli connection delete "$SELCONN"
+                break
+                ;;
+            restart)
+                clear
+                break
+                ;;
+        esac
+    done
+}
+
+connectionshow_func () {
+    echo " "
+    nmcli connection show
+    echo " "
+}
+
+createmainmenu_func () {
+echo "00. EXIT
+01. New WiFi Connection
+02. Known Connection
+03. Check Current Connection Details
+04. Rescan WiFi
+~~~ e|exit|q|quit for EXIT (or) r|res|restart for RESTART" > "$MAINMENU"
+}
+
+REMAINMENU=1
+
+cleanhelperfiles_func
+createmainmenu_func
+while true; do
+    if [ $((REMAINMENU)) -eq 1 ]; then
+        cat "$MAINMENU"
+    fi
+    read -p "~~~ Select Number: " SELNUM
+    correctnumber_func
+    if [ "$CORRECNUM" = "restart" ]; then
+        clear
+        echo "restarting..."
+        sleep 1
+        continue
+    fi
+    if ! cat "$MAINMENU" | grep -w "^$CORRECNUM" > /dev/null 2>&1; then
+        echo "~~~ selected number is outside options."
+        REMAINMENU=0
+        continue
+    fi
+    case "$CORRECNUM" in
+        00)
+            echo "~~~ break @ main loop"
+            break
+            ;;
+        01)
+            connectionshow_func
+            availablewifilist_func
+            connectwifi_func
+            connectionshow_func
+            REMAINMENU=1
+            continue
+            ;;
+        02)
+            connectionshow_func
+            connectionlist_func
+            connectionoperations_func
+            connectionshow_func
+            REMAINMENU=1
+            continue
+            ;;
+        03)
+            clear
+            echo " "
+            nmcli device wifi show-password
+            REMAINMENU=1
+            continue
+            ;;
+        04)
+            clear
+            echo "rescanning wifi..."
+            nmcli device wifi rescan
+            sleep 1
+            REMAINMENU=1
+            continue
+            ;;
+        *)
+            echo "~~~ selected number is outside options."
+            break
+            ;;
+    esac
+done
+cleanhelperfiles_func
+exit 0

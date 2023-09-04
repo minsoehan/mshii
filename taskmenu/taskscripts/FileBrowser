@@ -1,0 +1,17 @@
+#!/bin/dash
+
+[ ! -z "$1" ] && cd "$1" > /dev/null 2>&1 || cd ~ > /dev/null 2>&1
+
+while true; do
+	DIRFILEOPEN=$(ls -a --group-directories-first --file-type -- . | grep -v "^\.[a-zA-Z0-9]\|^\./" | wofi -d )
+	if [ -d "$DIRFILEOPEN" ]; then
+		cd "$DIRFILEOPEN"
+	else
+        if [ -f "$DIRFILEOPEN" ]; then
+            xdg-open "$DIRFILEOPEN" &
+        else
+            notify-send -t 900 "clean exit" "empty or not exist."
+        fi
+		break
+	fi
+done

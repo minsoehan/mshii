@@ -1,0 +1,105 @@
+#!/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*)
+        echo "continue..."
+        ;;
+    *)
+        notify-send -t 900 "clean exit" "please run the script in terminal."
+        exit 0
+        ;;
+esac
+
+BUIDIR=~/.cache/mshii/murbui
+
+aursearch_func () {
+    curl -s "https://aur.archlinux.org/rpc/?v=5&type=search&arg="$1"" | jq -r '.results [] | "-------------------------------------\n"+.Name+"\n"+.Description'
+    echo "-------------------------------------"
+}
+
+aurdownload_func () {
+    if [ ! -z "$1" ]; then
+        unset AURPKG
+        AURPKG=$(curl -s "https://aur.archlinux.org/rpc/?v=5&type=info&arg[]="$1"" | jq -r '.results [] | .Name')
+    fi
+    mkdir -p "$BUIDIR"
+    cd "$BUIDIR"
+    echo "::: Building Directory is "$PWD"."
+    echo "::: AUR Package Name is "$AURPKG"."
+
+    [ -d "$AURPKG" ] && rm -rf ./"$AURPKG" >> /dev/null 2>&1
+    [ -f "$AURPKG".tar.gz ] && rm -f ./"$AURPKG".tar.gz >> /dev/null 2>&1
+    wget https://aur.archlinux.org/cgit/aur.git/snapshot/"$AURPKG".tar.gz
+    tar -xzf ./"$AURPKG".tar.gz
+
+    echo "::: "$PWD"/"$(ls . | grep "$AURPKG".tar.gz)""
+    echo "::: "$PWD"/"$(ls . | grep "$AURPKG"$)""
+
+    cd ~
+}
+
+aurinstall_func () {
+    echo "entering package directory..."
+    sleep 0.5
+    mkdir -p "$BUIDIR"
+    cd "$BUIDIR"/"$AURPKG"
+    makepkg -isc
+    cd ~
+}
+
+aurupdate_func () {
+    for AURPKG in $(pacman -Qm | cut -d ' ' -f 1); do
+        INSTALLVER=$(pacman -Q "$AURPKG" | cut -d ' ' -f 2)
+        CURRENTVER=$(curl -s "https://aur.archlinux.org/rpc/?v=5&type=info&arg[]="$AURPKG"" | jq -r '.results[] | .Version')
+
+        if [ -z "$CURRENTVER" ]; then
+            echo "! "$AURPKG" is not found at aur.archlinux.org"
+            continue
+        fi
+
+        if [ "$INSTALLVER" = "$CURRENTVER" ]; then
+            echo -n ""$AURPKG" "
+            updateanimation_func
+            continue
+        fi
+        aurdownload_func
+        aurinstall_func
+
+    done
+}
+
+updateanimation_func () {
+    ANI='-:-:-:-:-:-:-:-:-:-:-:>: :u:p: :t:o: :d:a:t:e: :'
+    IFS=:
+    for i in $ANI; do
+        echo -n $i
+        sleep 0.08
+    done
+    echo ""
+}
+
+case "$1" in
+    search)
+        aursearch_func "$2"
+        ;;
+    download)
+        aurdownload_func "$2"
+        ;;
+    install)
+        aurdownload_func "$2"
+        aurinstall_func "$2"
+        ;;
+    update)
+        aurupdate_func
+        ;;
+    *)
+        echo "------------------------------------------------------------"
+        echo "   Do one of search, install, download and update after mur"
+        echo "   Examples:"
+        echo "    ~ $ ii mur search <keyword>"
+        echo "    ~ $ ii mur install <packagename>"
+        echo "    ~ $ ii mur download <packagename>"
+        echo "    ~ $ ii mur update"
+        echo "------------------------------------------------------------"
+        ;;
+esac

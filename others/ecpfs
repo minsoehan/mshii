@@ -1,0 +1,389 @@
+#!/usr/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*)
+        echo "continue..."
+        ;;
+    *)
+        notify-send -t 2700 "clean exit" "the script is to be run only in terminal."
+        exit 0
+        ;;
+esac
+
+incorrectusagemsg () {
+    echo "incorrect usage..."
+    echo "do one of the following examples;
+    :: $ mprvecf -u
+    :: $ mprvecf -m <fullpatch-or-foldername>
+    :: $ mprvecf check <fullpatch-or-foldername>
+    :: $ mprvecf clean <fullpatch-or-foldername>"
+}
+
+# check usage if true as follows:
+if ( [ "$1" = "clean" ] && [ ! -z "$2" ] ) || \
+    ( [ "$1" = "-u" ] && [ -z "$2" ] ) || \
+    ( [ "$1" = "-m" ] && [ ! -z "$2" ] ) || \
+    ( [ "$1" = "check" ] && [ ! -z "$2" ] ); then
+    echo "correct usage. continue..."
+else
+    incorrectusagemsg
+    echo "clean exit"
+    exit 0
+fi
+
+# check if module was loaded and ecryptfs-utils was installed.
+if lsmod | grep -wq ^ecryptfs; then
+    echo "ecryptfs module was mounted. continue..."
+else
+    echo "ecryptfs module was not mounted."
+    echo "run --> # modprobe ecryptfs <-- first."
+    exit 0
+fi
+if which ecryptfs-wrap-passphrase > /dev/null 2>&1; then
+    echo "ecryptfs-utils was installed. continue..."
+else
+    echo "ecryptfs-utils was NOT installed."
+    echo "run --> # pacman -S ecryptfs-utils <-- first."
+    exit 0
+fi
+
+# setting variables
+settingvar () {
+    if [ ! -z "$1" ]; then
+        case "$1" in
+            */*)
+                RAWPRVD=$(echo "$1" | sed "s|$HOME/||;s|/$||")
+                ;;
+            *)
+                RAWPRVD=".mshd/mshprv/Data/"$1""
+                ;;
+        esac
+    else
+        incorrectusagemsg
+        echo "clean exit"
+        exit 0
+    fi
+
+    PRVD="$HOME"/"$RAWPRVD"
+    PRVN=$(echo "$PRVD" | rev | cut -d '/' -f 1 | rev)
+    PRVB=$(echo "$PRVD" | rev | cut -d '/' -f 2- | rev)
+    PRVS="$PRVB"/."$PRVN"
+
+    WRPP=~/.ecryptfs/"$PRVN".wp
+    CONF=~/.ecryptfs/"$PRVN".conf
+    SIGN=~/.ecryptfs/"$PRVN".sig
+}
+
+# ----------- Finished setting variables --------------
+
+# functions of setting up ecryptfs
+enterpassword () {
+    unset EPASSWD
+    read -p "Show Password? (y/N): " SPYN
+    case "$SPYN" in
+        y|yes|Y|Yes)
+            read -p "Enter Password (show): " EPASSWD
+            ;;
+        *)
+            echo -n "Enter Password (hide): "; stty -echo; read EPASSWD; stty echo; echo
+            ;;
+    esac
+    echo "got entered password @ EPASSWD..."
+}
+setupwrpp () {
+    mkdir -p ~/.ecryptfs
+    echo "Password to associate with \""$PRVN"\"..."
+    enterpassword
+    local FDPW="$EPASSWD"
+    echo "Password to mount / umount \""$PRVN"\"..."
+    enterpassword
+    local MUPW="$EPASSWD"
+    echo ""$FDPW"\n"$MUPW"" | ecryptfs-wrap-passphrase "$WRPP" > /dev/null
+    if [ -f "$WRPP" ]; then
+        echo ""$WRPP" was successfully created."
+    else
+        echo "FAILED to create "$WRPP""
+    fi
+}
+insertkey () {
+    mkdir -p ~/.ecryptfs
+    echo "to insert wrapped passphrase into keyring..."
+    enterpassword
+    local ISPW="$EPASSWD"
+    echo "$ISPW" | ecryptfs-insert-wrapped-passphrase-into-keyring "$WRPP" - > /dev/null
+}
+setupsign () {
+    mkdir -p /tmp/usermshprv ~/.ecryptfs
+    echo "to insert wrapped passphrase into keyring..."
+    enterpassword
+    local ISPW="$EPASSWD"
+    echo "$ISPW" | ecryptfs-insert-wrapped-passphrase-into-keyring "$WRPP" - > /tmp/usermshprv/sigkey
+    local SIGKEY=$(cat /tmp/usermshprv/sigkey | awk -F '[][]' '/Inserted auth tok with sig/ {print $2}')
+    echo "$SIGKEY" > "$SIGN"
+    echo "$SIGKEY" >> "$SIGN"
+    if [ -f "$SIGN" ]; then
+        echo ""$SIGN" was successfully created."
+    else
+        echo "FAILED to create "$SIGN""
+    fi
+}
+setupconf () {
+    mkdir -p ~/.ecryptfs
+    echo ""$PRVS" "$PRVD" ecryptfs" > "$CONF"
+    if [ -f "$CONF" ]; then
+        echo ""$CONF" was successfully created."
+    else
+        echo "FAILED to create "$CONF""
+    fi
+}
+mkprvdirs () {
+    mkdir -p "$PRVS" "$PRVD"
+}
+# ------------ Finished fuctions of setting up ecryptfs ---------------
+
+# check required folders and files
+checkreqff () {
+    mkdir -p /tmp/usermshprv
+    local REQFF=/tmp/usermshprv/reqff
+    if [ -d "$PRVD" ]; then echo ""$PRVD" exits..."; else echo ""$PRVD" does NOT exit..." && echo 0 > "$REQFF"; fi
+    if [ -d "$PRVS" ]; then echo ""$PRVS" exits..."; else echo ""$PRVS" does NOT exit..." && echo 0 > "$REQFF"; fi
+    if [ -f "$WRPP" ]; then echo ""$WRPP" exits..."; else echo ""$WRPP" does NOT exit..." && echo 0 > "$REQFF"; fi
+    if [ -f "$CONF" ]; then echo ""$CONF" exits..."; else echo ""$CONF" does NOT exit..." && echo 0 > "$REQFF"; fi
+    if [ -f "$SIGN" ]; then echo ""$SIGN" exits..."; else echo ""$SIGN" does NOT exit..." && echo 0 > "$REQFF"; fi
+    echo " "
+    if [ -f "$REQFF" ] && [ "$((REQNN))" -eq 0 ]; then
+        local REQNN=$(cat "$REQFF")
+        REQFFSTATUS=0
+        echo "one or more required folder[s] or file[s] NOT exit..."
+        rm "$REQFF"
+    else
+        REQFFSTATUS=1
+        echo "required folders and files exit..."
+    fi
+}
+
+# umount.ecryptfs_private
+mountprv () {
+    checkreqff
+    if [ "$((REQFFSTATUS))" -eq 0 ]; then
+        echo "clean exit. check required folders and files first..."
+        exit 0
+    fi
+    local SIGNKEY=$(cat "$SIGN" | head -n 1)
+    if keyctl list @u | grep -wq "$SIGNKEY"; then
+        mount.ecryptfs_private "$PRVN" || echo "mount.ecryptfs_private FAILED..."
+    else
+        insertkey
+        mount.ecryptfs_private "$PRVN" || echo "mount.ecryptfs_private FAILED..."
+    fi
+    df -T | grep "$PRVD" || echo "mount.ecryptfs_private FAILED..."
+}
+
+# umount.ecryptfs_private
+umountprv () {
+    checkreqff
+    if [ "$((REQFFSTATUS))" -eq 0 ]; then
+        echo "clean exit. check required folders and files first..."
+        exit 0
+    fi
+    local SIGNKEY=$(cat "$SIGN" | head -n 1)
+    if keyctl list @u | grep -wq "$SIGNKEY"; then
+        umount.ecryptfs_private "$PRVN"
+    else
+        insertkey
+        umount.ecryptfs_private "$PRVN"
+    fi
+    if [ -z $(ls -A "$PRVD") ]; then
+        echo ""$PRVN" was successfully umounted"
+    else
+        echo "umount.ecryptfs_private FAILED..."
+    fi
+}
+
+# cleaning folders and files
+cleanff () {
+    if df -T | grep "$PRVD"; then
+        echo ""$PRVN" is mouted and busy."
+        echo "umount "$PRVN" first and come back. clean exit."
+        exit 0
+    fi
+    if [ -f "$CONF" ]; then
+        read -p "remove "$CONF" file? (y/N): " RCFYN
+        case "$RCFYN" in
+            y|yes|Y|Yes)
+                [ -f "$CONF" ] && rm "$CONF"
+                echo ":: "$CONF" was successfully deleted."
+                ;;
+            *)
+                echo ":: "$CONF" was left as it is there."
+                ;;
+        esac
+    else
+        echo ":: "$CONF" does NOT exit."
+    fi
+    if [ -f "$SIGN" ]; then
+        read -p "remove "$SIGN" file? (y/N): " RSFYN
+        case "$RSFYN" in
+            y|yes|Y|Yes)
+                [ -f "$SIGN" ] && rm "$SIGN"
+                echo ":: "$SIGN" was successfully deleted."
+                ;;
+            *)
+                echo ":: "$SIGN" was left as it is there."
+                ;;
+        esac
+    else
+        echo ":: "$SIGN" does NOT exit."
+    fi
+    if [ -f "$WRPP" ]; then
+        read -p "remove "$WRPP" file? (y/N): " RWFYN
+        case "$RWFYN" in
+            y|yes|Y|Yes)
+                [ -f "$WRPP" ] && rm "$WRPP"
+                echo ":: "$WRPP" was successfully deleted."
+                ;;
+            *)
+                echo ":: "$WRPP" was left as it is there."
+                ;;
+        esac
+    else
+        echo ":: "$WRPP" does NOT exit."
+    fi
+    if [ -d "$PRVD" ]; then
+        read -p "remove "$PRVN" folder? (y/N): " RPFYN
+        case "$RPFYN" in
+            y|yes|Y|Yes)
+                rmdir "$PRVD" || echo "check it first and delete it manually if needed."
+                ;;
+            *)
+                echo ":: "$PRVD" was left as it is there."
+                ;;
+        esac
+    else
+        echo ":: "$PRVD" does NOT exit."
+    fi
+    if [ -d "$PRVS" ]; then
+        read -p "remove ."$PRVN" folder? (y/N): " RHFYN
+        case "$RHFYN" in
+            y|yes|Y|Yes)
+                rmdir "$PRVS" || echo "check it first and delete it manually if needed."
+                ;;
+            *)
+                echo ":: "$PRVS" was left as it is there."
+                ;;
+        esac
+    else
+        echo ":: "$PRVS" does NOT exit."
+    fi
+}
+
+mountlistumount () {
+    mkdir -p /tmp/usermshprv
+    local MLIST=$(df -T | awk '/ ecryptfs / {print $7}')
+    if [ -z "$MLIST" ]; then
+        echo "no mounted ecryptfs dir..."
+        echo ":: use $ mshprvc -m <fullpath-or-foldername>"
+        exit 0
+    else
+        echo "continue..."
+        echo "the following ecryptfs prvdirs were mounted."
+        echo " "
+    fi
+    local NUM=1
+    for i in $MLIST; do
+        local PRVNA=$(echo "$i" | rev | cut -d '/' -f 1 | rev)
+        local ZLNUM=$(printf "%02d" "$NUM")
+        echo "$ZLNUM. $PRVNA @ $i"
+        local NUM=$((NUM+1))
+    done > /tmp/usermshprv/ecfsmlist
+    cat /tmp/usermshprv/ecfsmlist
+    echo " "
+    echo "select to umount, or leave blank to exit."
+    read -p "type number or leave it blank: " DIRNN
+    case $DIRNN in
+        [0-9])
+            local DIRSEL=$(printf "%02d" "$DIRNN")
+            local PRVN=$(cat /tmp/usermshprv/ecfsmlist | grep ^$DIRSEL | cut -d ' ' -f 2)
+            local PRVD=$(cat /tmp/usermshprv/ecfsmlist | grep ^$DIRSEL | cut -d ' ' -f 4)
+            local PRVB=$(echo "$PRVD" | rev | cut -d '/' -f 2- | rev)
+            local PRVS="$PRVB"/."$PRVN"
+            ;;
+        [0-9][0-9])
+            local PRVN=$(cat /tmp/usermshprv/ecfsmlist | grep ^$DIRNN | cut -d ' ' -f 2)
+            local PRVD=$(cat /tmp/usermshprv/ecfsmlist | grep ^$DIRNN | cut -d ' ' -f 4)
+            local PRVB=$(echo "$PRVD" | rev | cut -d '/' -f 2- | rev)
+            local PRVS="$PRVB"/."$PRVN"
+            ;;
+        *)
+            echo "clean exit. all are intact."
+            exit 0
+            ;;
+    esac
+    echo "umounting "$PRVN""
+    echo " "
+    sleep 1
+    if [ ! -z "$PRVN" ]; then
+        local WRPP=~/.ecryptfs/"$PRVN".wp
+        local CONF=~/.ecryptfs/"$PRVN".conf
+        local SIGN=~/.ecryptfs/"$PRVN".sig
+        umountprv
+    else
+        echo "wrong ecryptfs dirname..."
+    fi
+    rm /tmp/usermshprv/ecfsmlist
+    exit 0
+}
+
+if [ "$1" = "-u" ]; then
+    mountlistumount
+fi
+
+if [ "$1" = "-m" ] && [ ! -z "$2" ]; then
+    settingvar "$2"
+    CKPRVNMU=$(df -T | awk -v patt="$PRVD" '$0 ~ patt {print $2,$7}')
+    if [ ! -z "$CKPRVNMU" ]; then
+        echo ""$PRVN" is already mounted."
+        echo ":: "$CKPRVNMU""
+        read -p "do you want to umount it? (y/N): " UMYN
+        case "$UMYN" in
+            y|yes|Y|Yes)
+                umountprv
+                ;;
+            *)
+                echo ""$PRVN" was left as it is there."
+                ;;
+        esac
+    else
+        [ -f "$WRPP" ] && echo ""$WRPP" exits and continue..." || setupwrpp
+        if [ -f "$SIGN" ]; then
+            echo ""$SIGN" exits and continue..."
+            SIGNKEY=$(cat "$SIGN" | head -n 1)
+            if keyctl list @u | grep -q "$SIGNKEY"; then
+                echo "key is already inserted and continue..."
+            else
+                echo "key does not exit in keyring..."
+                insertkey
+            fi
+        else
+            setupsign
+        fi
+        [ -f "$CONF" ] && echo ""$CONF" exits and continue..." || setupconf
+        if [ -d "$PRVD" ] && [ -d "$PRVS" ]; then
+            echo "directories exit and continue..."
+        else
+            mkprvdirs
+        fi
+        mountprv
+    fi
+elif [ "$1" = "clean" ] && [ ! -z "$2" ]; then
+    settingvar "$2"
+    cleanff
+elif
+    [ "$1" = "check" ] && [ ! -z "$2" ]; then
+    settingvar "$2"
+    checkreqff
+else
+    incorrectusagemsg
+    echo "clean exit"
+    exit 0
+fi

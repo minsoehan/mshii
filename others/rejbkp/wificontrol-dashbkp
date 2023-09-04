@@ -1,0 +1,173 @@
+#!/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*)
+        echo "continue..."
+        ;;
+    *)
+        notify-send -t 2700 "clean exit" "the script is to be run only in terminal."
+        exit 0
+        ;;
+esac
+
+if which nmcli > /dev/null 2>&1; then
+    echo "continue..."
+else
+    echo "nmcli command does not exit.\ninstall NetworkManager first.\nclean exit"
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+# correcting input number as zero leading two digits
+correctnumber () {
+    case "$SELNUM" in
+        [0-9])
+            ZLNUM="$(printf "%02d" "$SELNUM")"
+            ;;
+        [0-9][0-9])
+            ZLNUM="$SELNUM"
+            ;;
+        *)
+            clear
+            echo "selected wrong number...\nclean exit"
+            exit 0
+            ;;
+    esac
+}
+# END OF of input correcting number as zero leading two digits
+
+# list available WiFi and connect to select WiFi
+listavailablewifi () {
+    local FIELDS="BSSID,SSID,SECURITY,BARS,IN-USE"
+    read -p "~~~ rescan or not? (y/N): " RESCYN
+    case "$RESCYN" in
+        y|yes|Y|Yes)
+            nmcli --fields "$FIELDS" device wifi list --rescan yes | grep -wv ^BSSID | sed 's/*/-/g' > "$HEREDIR"/wifilist
+            ;;
+        *)
+            nmcli --fields "$FIELDS" device wifi list | grep -wv ^BSSID | sed 's/*/-/g' > "$HEREDIR"/wifilist
+            ;;
+    esac
+    local NUM=1
+    for i in $(cat "$HEREDIR"/wifilist | sed 's/ /_/g'); do
+        local NNUM=$(printf "%02d" "$NUM")
+        echo ""$NNUM"_"$i""
+        local NUM=$((NUM+1))
+    done > "$HEREDIR"/num-wifilist
+}
+connecttowifi () {
+    echo "~~~ listing available WiFi..."
+    cat "$HEREDIR"/num-wifilist | cut -d '_' -f 1,3-
+    read -p "~~~ select number to connect: " SELNUM
+    correctnumber
+    local BSSIDNUM=$(cat "$HEREDIR"/num-wifilist | grep -w ^$ZLNUM | cut -d '_' -f 2)
+    if [ -z "$BSSIDNUM" ]; then
+        echo "selected BSSID is empty...\nclean exit"
+        exit 0
+    fi
+    read -p "~~~ Password? (Y/n): " PYN
+    case "$PYN" in
+        n|no|N|No)
+            nmcli device wifi connect "$BSSIDNUM" && exit 0 || echo "continue for password..."
+            sleep 1
+            read -p "Password: " WFPASS
+            nmcli device wifi connect "$BSSIDNUM" password "$WFPASS"
+            ;;
+        *)
+            read -p "Password: " WFPASS
+            nmcli device wifi connect "$BSSIDNUM" password "$WFPASS"
+            ;;
+    esac
+}
+# END OF list available WiFi and connect to select WiFi
+
+# list connections and do connection operations
+listconnections () {
+    nmcli --fields UUID,NAME,TYPE,DEVICE connection show | grep -wv ^UUID > "$HEREDIR"/connectionlist
+    local NUM=1
+    for i in $(cat "$HEREDIR"/connectionlist | sed 's/ /_/g'); do
+        local NNUM=$(printf "%02d" "$NUM")
+        echo ""$NNUM"_"$i""
+        local NUM=$((NUM+1))
+    done > "$HEREDIR"/num-connectionlist
+}
+connectionoperations () {
+    echo "~~~ listing connections..."
+    cat "$HEREDIR"/num-connectionlist | cut -d ' ' -f 1,3-
+    read -p "~~~ select number of connection: " SELNUM
+    correctnumber
+    local SELCON=$(cat "$HEREDIR"/num-connectionlist | grep -w ^"$ZLNUM" | cut -d ' ' -f 2)
+    echo "selected connection..."
+    cat "$HEREDIR"/num-connectionlist | grep -w ^"$ZLNUM"
+    echo "~~~ listing available operations..."
+    echo "00. Exit\n01. Activate\n02. Deactivate\n03. Check Password\n04. Delete"
+    read -p "~~~ select number of operation: " SELNUM
+    correctnumber
+    case "$ZLNUM" in
+        00)
+            exit 0
+            ;;
+        01)
+            nmcli connection up "$SELCON"
+            ;;
+        02)
+            nmcli connection down "$SELCON"
+            ;;
+        03)
+            nmcli --show-secrets connection show "$SELCON" | grep security.psk:
+            ;;
+        04)
+            nmcli connection delete "$SELCON"
+            ;;
+    esac
+}
+# END OF list connections and do connection operations
+# END OF pre-testings and creating functions
+
+# the script starts from here
+
+echo "CURRENT..."
+nmcli connection show --active
+
+echo "~~~ listing available operations...
+00. Exit
+01. List Available WiFi and Set Up Connection
+02. List Known Connections and up/down/check-password
+03. Check Current WiFi Password
+04. Rescan WiFi"
+read -p "~~~ select number of operation: " SELNUM
+correctnumber
+case "$ZLNUM" in
+    00)
+        clear
+        echo "clean exit" && exit 0
+        ;;
+    01)
+        listavailablewifi
+        clear
+        connecttowifi
+        $0
+        ;;
+    02)
+        listconnections
+        clear
+        connectionoperations
+        $0
+        ;;
+    03)
+        clear
+        nmcli device wifi show-password
+        $0
+        ;;
+    04)
+        clear
+        nmcli device wifi rescan
+        $0
+        ;;
+    *)
+        clear
+        echo "invalid number...\nclean exit"
+        ;;
+esac
+# the script ENDS from here

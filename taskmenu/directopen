@@ -1,0 +1,35 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+MENU2=""$HEREDIR"/helpers/menumaker2"
+
+cd "$HEREDIR"/helpers/directopenscripts
+
+correctnumber_func () {
+    case "$1" in
+        [0-9])
+            ZLNUM="$(printf "%02d" "$1")"
+            ;;
+        [0-9][0-9])
+            ZLNUM="$1"
+            ;;
+        *)
+            notify-send -t 2700 "clean exit" "wrong number. 01 to 99 (or) 1 to 99"
+            exit 0
+            ;;
+    esac
+}
+
+if [ ! -z "$1" ]; then
+    correctnumber_func "$1"
+    ./"$ZLNUM".*.sh &
+    exit 0
+fi
+
+DIREOPEN=$(ls . | "$MENU2")
+
+if [ -x "$DIREOPEN" ]; then
+    ./"$DIREOPEN" &
+else
+    notify-send -t 2700 "clean exit" "empty or not exist or not excutable."
+fi

@@ -1,0 +1,36 @@
+#!/bin/dash
+
+SCRIPTNAME="$(basename -- "$0")"
+if pidof -x "$SCRIPTNAME" -o $$ >> /dev/null 2>&1; then
+    notify-send -t 9000 "Already Running" "The iwaitedloop is already running and clean exit."
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+
+"$BACKDIR"/others/audiocontrol update
+"$BACKDIR"/others/screencontrol update
+"$BACKDIR"/others/battnoticontrol update
+
+_writestatus () {
+    cd "$HEREDIR"/iwaited
+    LINE1=$(paste -d '' datetime dlm battery batnotistate)
+    LINE2=$(paste wificonnection)
+    LINE3=$(paste -d '' mutestate dlm volume dlm screenbrightness)
+    notify-send -h string:x-canonical-private-synchronous:iwaitedloop \
+        " " "$LINE1\n$LINE2\n$LINE3\n_"
+    cd ../
+}
+_writestatus
+
+SECLIMIT=1
+while true; do
+    if [ $((SECLIMIT)) -gt 60 ]; then
+        "$HEREDIR"/maintoggle
+        break
+    fi
+    SECLIMIT=$((SECLIMIT+1))
+    inotifywait -qq --event modify "$HEREDIR"/iwaited/*
+    _writestatus
+done & > /dev/null 2>&1

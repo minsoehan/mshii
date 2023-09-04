@@ -1,0 +1,15 @@
+#!/bin/dash
+
+if [ -z "$1" ]; then
+    notify-send -t 2700 "clean exit" "run $ ii kill <program|script>."
+    exit 0
+fi
+
+KILLPID=$(pgrep -f "$1" | head -n 1)
+
+if [ -z "$KILLPID" ]; then
+    notify-send -t 9000 "clean exit" "no pid found by the pgrep command."
+    exit 0
+fi
+
+kill -9 "$KILLPID"

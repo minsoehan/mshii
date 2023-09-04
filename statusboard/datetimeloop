@@ -1,0 +1,17 @@
+#!/bin/dash
+
+SCRIPTNAME="$(basename -- "$0")"
+if pidof -x "$SCRIPTNAME" -o $$ >> /dev/null 2>&1; then
+    notify-send -t 9000 "Already Running" "The datetimeloop is already running. So, clean exit."
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+while true; do
+    date "+%F %A %R | %r" > "$HEREDIR"/iwaited/datetime
+    sleep 1
+    if ! pidof -x iwaitedloop > /dev/null 2>&1; then
+        break
+    fi
+done & > /dev/null 2>&1

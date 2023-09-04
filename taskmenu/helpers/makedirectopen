@@ -1,0 +1,51 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+listdirectopenlinks_func () {
+    case $(ps -o stat= -p $$) in
+        *+*)
+            echo "continue..."
+            sleep 1
+            ;;
+        *)
+            notify-send -t 2700 "clean exit" "the script is to be run only in terminal."
+            exit 0
+            ;;
+    esac
+    # open directopenlist in nvim and update file paths each per line
+    # Eg. ~/001SSD/00-Training-Compulsory/EC-questions.pdf
+    nvim "$HEREDIR"/directopenlist
+    notify-send -t 2700 "directopenlist was updated" "generate directopenscripts, next."
+}
+
+gendirectopenscripts_func () {
+    rm "$HEREDIR"/directopenscripts/* > /dev/null 2>&1
+    local SNUM=1
+    for DOPATH in $(cat "$HEREDIR"/directopenlist); do
+        local DOTEST="$(echo "$DOPATH" | sed 's/~\///')"
+        local SNAME="$(basename "$DOPATH")"
+        local ZLNUM="$(printf "%02d" "$SNUM")"
+        local ZLNUMSNAME=""$HEREDIR"/directopenscripts/$(echo ""$ZLNUM"."$SNAME".sh")"
+        if [ -d ~/"$DOTEST" ]; then
+            echo "#!/bin/dash\nii bao "$DOPATH" &" > "$ZLNUMSNAME"
+            chmod +x "$ZLNUMSNAME"
+        else
+            echo "#!/bin/dash\nxdg-open "$DOPATH" &" > "$ZLNUMSNAME"
+            chmod +x "$ZLNUMSNAME"
+        fi
+        local SNUM=$((SNUM+1))
+    done
+}
+
+case "$1" in
+    list|makelist)
+        listdirectopenlinks_func
+        ;;
+    gen|generate)
+        gendirectopenscripts_func
+        ;;
+    *)
+        notify-send -t 2700 "clean exit" "list|makelist or gen|generate"
+        ;;
+esac

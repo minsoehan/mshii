@@ -1,0 +1,12 @@
+#!/bin/dash
+
+# this is menu maker with NO cache memory
+# the lase selected item apprears up most.
+# one of the following can be used by uncommenting
+#bemenu
+#wofi -k /dev/null -d
+#fuzzel -d
+#rofi -dmenu
+#$TERM -e fzf
+
+wofi -k /dev/null -d

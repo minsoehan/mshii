@@ -1,0 +1,30 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+MLBSTATE=""$HEREDIR"/mouseleftbuttonstate"
+CKMSTATE="$(cat "$MLBSTATE")"
+
+SELANDVIEW="$(pidof -x selectandview)"
+
+SECLIMIT=1
+while true; do
+    if [ $((CKMSTATE)) -eq 0 ] || [ -z "SELANDVIEW" ]; then
+        notify-send -t 2700 "clean exit" "mouseleftbuttonstate is 0 or selectandview is not running."
+        break
+    fi
+    if [ $((SECLIMIT)) -le 60 ]; then
+        sleep 1
+    else
+        if [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+            kill -9 "$SELANDVIEW"
+            swaymsg seat seat0 cursor release button1
+        else
+            kill -9 "$SELANDVIEW"
+            sudo ydotool click 0x80
+        fi
+        notify-send -t 2700 "clean exit" "mouse left button has been released."
+        break
+    fi
+    SECLIMIT=$((SECLIMIT+1))
+done & > /dev/null 2>&1

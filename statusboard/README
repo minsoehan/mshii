@@ -1,0 +1,17 @@
+2023-08-09 Wednesday 15:43 03:43:18 PM
+
+This is mshii statusboard notes
+
+- if statuses of battery and wifi are not correct, edit the paths
+- in the "batteryloop" and "wifiloop" script files respectively.
+- for example
+- /sys/class/power_supply/BAT0/status
+- /sys/class/power_supply/BAT0/capacity
+- /sys/class/net/wlo1/operstate
+
+- ../others/audiocontrol and ../others/screencontrol write the following files
+    - ./iwaited/mutestate
+    - ./iwaited/volume
+    - ./iwaited/screenbrightness
+
+---

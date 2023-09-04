@@ -1,0 +1,62 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+MENU1=""$HEREDIR"/helpers/menumaker1"
+
+dirfileopen_func () {
+    cd "$DFOPEN"
+    while true; do
+        DIRCONTENT=$(ls -a --group-directories-first --file-type -- . | grep -v "^\.[a-zA-Z0-9]\|^\./" | "$MENU1")
+        if [ -d "$DIRCONTENT" ]; then
+            cd "$DIRCONTENT"
+        else
+            if [ -f "$DIRCONTENT" ]; then
+                xdg-open "$DIRCONTENT" &
+            fi
+            break
+        fi
+    done
+}
+
+fileopen_func () {
+    if [ -f "$FOPEN" ]; then
+        xdg-open "$FOPEN" &
+    else
+        notify-send -t 900 "clean exit" "this is not file or the file does not exist."
+    fi
+}
+
+searchkeyword_func () {
+    SEARCHHISTORY=""$HEREDIR"/helpers/search-history"
+    SEARCHKEYWORD=$(cat "$SEARCHHISTORY" | "$MENU1")
+    [ -z "$SEARCHKEYWORD" ] && notify-send -t 900 "clean exit" "no search key word." && exit 0
+    (echo "$SEARCHKEYWORD" && cat "$SEARCHHISTORY") | awk '!_[$0]++' | head -n 7 > "$SEARCHHISTORY"-tmp
+    sleep 0.5
+    rm "$SEARCHHISTORY" && mv "$SEARCHHISTORY"-tmp "$SEARCHHISTORY"
+}
+
+MAINMENU=$(echo "Dictionary
+Search File
+Search Folder
+Browse and Open" | "$MENU1")
+
+case "$MAINMENU" in
+    "Dictionary")
+        cd "$HEREDIR"/helpers/mshdicsrc
+        FOPEN=$(ls . | "$MENU1")
+        fileopen_func
+        ;;
+    "Search File")
+        searchkeyword_func
+        FOPEN="$(find ~ -type f -iname "*$SEARCHKEYWORD*" | "$MENU1")"
+        fileopen_func
+        ;;
+    "Search Folder")
+        searchkeyword_func
+        DFOPEN="$(find ~ -type d -iname "*$SEARCHKEYWORD*" | "$MENU1")"
+        dirfileopen_func
+        ;;
+    "Browse and Open")
+        dirfileopen_func
+        ;;
+esac

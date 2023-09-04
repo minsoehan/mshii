@@ -1,0 +1,24 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+LOOP1=datetimeloop
+LOOP2=batteryloop
+LOOP3=wifiloop
+LOOP4=iwaitedloop
+
+KILLCOUNT=0
+for LOOPN in $LOOP1 $LOOP2 $LOOP3 $LOOP4; do
+    LPID=$(pidof -x "$LOOPN")
+    if [ -z "$LPID" ]; then
+        "$HEREDIR"/"$LOOPN" &
+    else
+        kill -9 "$LPID"
+        KILLCOUNT=$((KILLCOUNT+1))
+    fi
+done
+
+if [ $((KILLCOUNT)) -eq 4 ]; then
+    notify-send -t 900 -h string:x-canonical-private-synchronous:iwaitedloop \
+        "'" " --- closed statusboard --- \n_"
+fi

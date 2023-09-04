@@ -1,0 +1,26 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+
+case "$1" in
+    toggle)
+        pactl set-sink-mute @DEFAULT_SINK@ toggle
+        echo ""Audio" $(pactl get-sink-mute @DEFAULT_SINK@)" > "$BACKDIR"/statusboard/iwaited/mutestate
+        ;;
+    volup)
+        pactl set-sink-volume @DEFAULT_SINK@ +5%
+        pactl get-sink-volume @DEFAULT_SINK@ | awk '/Volume: / {print $1, $5, $12}' > "$BACKDIR"/statusboard/iwaited/volume
+        ;;
+    voldown)
+        pactl set-sink-volume @DEFAULT_SINK@ -5%
+        pactl get-sink-volume @DEFAULT_SINK@ | awk '/Volume: / {print $1, $5, $12}' > "$BACKDIR"/statusboard/iwaited/volume
+        ;;
+    update)
+        echo ""Audio" $(pactl get-sink-mute @DEFAULT_SINK@)" > "$BACKDIR"/statusboard/iwaited/mutestate
+        pactl get-sink-volume @DEFAULT_SINK@ | awk '/Volume: / {print $1, $5, $12}' > "$BACKDIR"/statusboard/iwaited/volume
+        ;;
+    *)
+        notify-send "Do one of the followings;" "toggle, volup and voldown"
+        ;;
+esac

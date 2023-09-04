@@ -1,0 +1,11 @@
+#!/bin/dash
+
+if [ "$XDG_CURRENT_DESKTOP" != "sway" ]; then
+    notify-send -t 900 "clean exit" "sway is not running."
+    exit 0
+fi
+
+grim -g "$(swaymsg -t get_tree | jq -j '.. | select(.type?) | select(.focused).rect | "\(.x),\(.y) \(.width)x\(.height)"')" ~/Pictures/screenshots/$(date +'%Y%m%d-%H%M%S').png
+notify-send -t 900 \
+    "Focused Window Screenshot" \
+    "A screenshot of your focused window has been saved to ~/Pictures/screenshots."

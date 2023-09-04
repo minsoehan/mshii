@@ -1,0 +1,12 @@
+#!/bin/dash
+
+# this is menu maker with cache memory
+# the lase selected item apprears up most.
+# one of the following can be used by uncommenting
+#bemenu --fn "monospace 18" -l 12
+#wofi -d
+#fuzzel -d
+#rofi -dmenu
+#$TERM -e fzf
+
+wofi -d

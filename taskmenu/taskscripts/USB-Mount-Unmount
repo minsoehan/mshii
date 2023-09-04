@@ -1,0 +1,38 @@
+#!/bin/dash
+
+if ! which udisksctl > /dev/null 2>&1; then
+    notify-send "No Command Found" "udisksctl was not found. install udisks2 first."
+    exit 0
+fi
+
+if ! lsblk -r | grep disk | grep -vq ^sd[ab]; then
+    notify-send "No USB" "Insert USB to mount..."
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+CHKUSB=$(lsblk -r | grep part | grep -v ^sd[ab][1-9])
+
+if [ -z "$CHKUSB" ]; then
+    USBDEV=$(lsblk -r | grep disk | grep -v ^sd[ab] | "$MENU1")
+    CKUSBS=$(lsblk -r | grep disk | grep -v ^sd[ab] | grep "$USBDEV")
+else
+    USBDEV=$(lsblk -r | grep part | grep -v ^sd[ab][1-9] | "$MENU1")
+    CKUSBS=$(lsblk -r | grep part | grep -v ^sd[ab][1-9] | grep "$USBDEV")
+fi
+
+[ -z "$USBDEV" ] && exit 0
+[ -z "$CKUSBS" ] && exit 0
+
+USBM=$(echo "$USBDEV" | cut -d ' ' -f 1)
+CKMU=$(echo "$USBDEV" | cut -d ' ' -f 7)
+if [ -z "$CKMU" ]; then
+    udisksctl mount -b /dev/"$USBM" > /dev/null 2>&1
+    notify-send -t 1800 "mount" "/dev/"$USBM" has been mounted"
+else
+    udisksctl unmount -b /dev/"$USBM" > /dev/null 2>&1
+    notify-send -t 1800 "unmount" "/dev/"$USBM" has been unmounted"
+fi

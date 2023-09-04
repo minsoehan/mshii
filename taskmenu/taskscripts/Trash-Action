@@ -1,0 +1,32 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+while true; do
+
+    TRASHFILE=$(trash-list | "$MENU1")
+    CKSELFILE=$(trash-list | grep "$TRASHFILE")
+
+    if [ -z "$TRASHFILE" ] || [ -z "$CKSELFILE" ]; then
+        notify-send -t 1800 "clean exit" "empty or not exist."
+        break
+    fi
+
+    TRASHACTION=$(echo "Restore\nDelete" | "$MENU1")
+    case "$TRASHACTION" in
+        Restore)
+            # foot -T "mshfloat" -e trash-restore "$(echo "$TRASHFILE" | cut -d ' ' -f3-)"
+            echo "0" | trash-restore "$(echo "$TRASHFILE" | cut -d ' ' -f3-)" > /dev/null 2>&1
+            ;;
+        Delete)
+            trash-rm "$(echo "$TRASHFILE" | cut -d ' ' -f3-)"
+            ;;
+        *)
+            notify-send -t 1800 "clean exit" "do Restore or Delete."
+            break
+            ;;
+    esac
+
+done

@@ -1,0 +1,14 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+MENU2=""$HEREDIR"/helpers/menumaker2"
+
+cd "$HEREDIR"/screenshots
+SELSS=$(ls . | "$MENU2")
+
+if [ ! -x "$SELSS" ]; then
+    notify-send -t 900 "clean exit" "empty or not exist."
+    exit 0
+fi
+
+./"$SELSS"

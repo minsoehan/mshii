@@ -1,0 +1,120 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+bypasstoNoti_func () {
+    local MSGOUTPUT=$(while read opt; do echo "$opt"; done)
+    if [ -z "$MSGOUTPUT" ]; then
+        notify-send -t 1800 "NO stdout or stderr" "Your command seems successfully executed."
+    else
+        notify-send -t 3000 " " "$MSGOUTPUT\n_"
+    fi
+}
+
+knownconnection_func () {
+    local SELCON=$(nmcli --fields UUID,NAME,TYPE,DEVICE connection show | grep -v UUID | "$MENU1")
+    local CKSELCON=$(nmcli --fields UUID,NAME,TYPE,DEVICE connection show | grep -v UUID | grep "$SELCON")
+    if [ -z "$SELCON" ] || [ -z "$CKSELCON" ]; then
+        notify-send -t 1800 "clean exit" "empty or not exist."
+        exit 0
+    fi
+    local SELUUID=$(echo "$SELCON" | awk '{print $1}')
+    local CONOPT=$(echo "Activate\nDeactivate\nCheckPassword\nDelete" | "$MENU1")
+    case "$CONOPT" in
+        Activate)
+            nmcli connection up "$SELUUID" 2>&1 | bypasstoNoti_func
+            ;;
+        Deactivate)
+            nmcli connection down "$SELUUID" 2>&1 | bypasstoNoti_func
+            ;;
+        CheckPassword)
+            local PSK=$(nmcli --show-secrets connection show "$SELUUID" | grep security.psk:)
+            notify-send -t 9000 " " "$PSK\n_"
+            ;;
+        Delete)
+            nmcli connection delete "$SELUUID" 2>&1 | bypasstoNoti_func
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+newconnection_func () {
+    
+    local FIELDS=SSID,BSSID,SECURITY,BARS,IN-USE
+    local SELSSID=$(nmcli --fields "$FIELDS" device wifi list --rescan yes | grep -v BSSID | "$MENU1")
+    local SSIDSEL=$(echo "$SELSSID" | awk \
+        -F ' *[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z]:[0-9a-zA-Z][0-9a-zA-Z] *' \
+        '{print $1}')
+
+    local CKSELSS=$(nmcli --fields "$FIELDS" device wifi list | grep -v BSSID | grep "$SSIDSEL")
+
+    if [ -z "$SELSSID" ] || [ -z "$CKSELSS" ]; then
+        notify-send -t 1800 "clean exit" "empty or not exist."
+        exit 0
+    fi
+
+    local CONFIRM=$(echo "Exit\nConnect to Selected SSID" | "$MENU1")
+    case "$CONFIRM" in
+        "Exit")
+            notify-send -t 1800 "clean exit" "empty or not exist."
+            exit 0
+            ;;
+        "Connect to Selected SSID")
+            ASKPASS=$(echo "Password\nNo Password" | "$MENU1")
+            case "$ASKPASS" in
+                "Password")
+                    PASSWD=$(echo "DO NOT Select this. Type your PASSWORD." | "$MENU1")
+                    if [ -z "$PASSWD" ]; then
+                        notify-send -t 1800 "clean exit" "empty passworrd"
+                        exit 0
+                    fi
+                    nmcli device wifi connect "$SSIDSEL" password "$PASSWD" 2>&1 | bypasstoNoti_func
+                    ;;
+                "No Password")
+                    nmcli device wifi connect "$SSIDSEL" 2>&1 | bypasstoNoti_func
+                    ;;
+                *)
+                    notify-send -t 1800 "clean exit" "do Password or No Password."
+                    exit 0
+                    ;;
+            esac
+            ;;
+        *)
+            notify-send -t 1800 "clean exit" "empty or not exist."
+            exit 0
+            ;;
+    esac
+}
+
+OLDORNEW=$(echo "Known Connection\nNew Connection\nRescan WiFi\nRescan WiFi & nmtui\nNoscan WiFi & nmtui\nCheck Current SSID Password" | wofi -k /dev/null -d)
+
+case "$OLDORNEW" in
+    "Known Connection")
+        knownconnection_func
+        ;;
+    "New Connection")
+        newconnection_func
+        ;;
+    "Rescan WiFi")
+        nmcli device wifi rescan
+        notify-send -t 1800 "wifi rescan" "Rescanned WiFi"
+        ;;
+    "Rescan WiFi & nmtui")
+        nmcli device wifi rescan
+        alacritty -t "mshfloat" -e nmtui &
+        ;;
+    "Noscan WiFi & nmtui")
+        alacritty -t "mshfloat" -e nmtui &
+        ;;
+    "Check Current SSID Password")
+        CPSK=$(nmcli device wifi show-password)
+        notify-send -t 9000 " " "$CPSK\n_"
+        ;;
+    *)
+        exit 0
+        ;;
+esac

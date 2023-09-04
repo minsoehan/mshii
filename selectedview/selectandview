@@ -1,0 +1,45 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+MLBSTATE=""$HEREDIR"/mouseleftbuttonstate"
+[ ! -f "$MLBSTATE" ] && echo "0" > "$MLBSTATE"
+CKMSTATE="$(cat "$MLBSTATE")"
+
+mouseleftbutton_func () {
+    if [ $((CKMSTATE)) -eq 0 ]; then
+        if [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+            swaymsg seat seat0 cursor press button1
+            echo "1" > "$MLBSTATE"
+            "$HEREDIR"/watchmousebutton1 &
+        else
+            sudo ydotool click 0x40
+            echo "1" > "$MLBSTATE"
+            "$HEREDIR"/watchmousebutton1 &
+        fi
+    else
+        if [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+            swaymsg seat seat0 cursor release button1
+            echo "0" > "$MLBSTATE"
+            kill -9 $(pidof -x watchmousebutton1)
+        else
+            sudo ydotool click 0x80
+            echo "0" > "$MLBSTATE"
+            kill -9 $(pidof -x watchmousebutton1)
+        fi
+    fi > /dev/null 2>&1
+}
+
+if [ ! $(pgrep -f slurp) ]; then
+    if [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+        swaymsg seat seat0 cursor release button1
+        echo "0" > "$MLBSTATE"
+    else
+        sudo ydotool click 0x80
+        echo "0" > "$MLBSTATE"
+    fi
+    grim -g "$(slurp)" "$HEREDIR"/selectedarea.png &&
+        feh --title "mshfloat" -B black --auto-zoom "$HEREDIR"/selectedarea.png &
+else
+    mouseleftbutton_func
+fi

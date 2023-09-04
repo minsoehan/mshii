@@ -1,0 +1,87 @@
+#!/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*) echo "continue..." ;;
+    *) notify-send "clean exit" "please run this script in terminal."; exit 0 ;;
+esac
+
+MONILINK=/sys/class/drm/card1-HDMI-A-1
+
+CKSTATUS=$(cat "$MONILINK"/status)
+if [ "$CKSTATUS" = "disconnected" ]; then
+    echo "HDMI-A-1 is disconnected, clean exit."
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+MODENUM=1
+for MODE in $(cat "$MONILINK"/modes | head -n 9); do
+    echo ""$MODENUM". "$MODE""
+    MODENUM=$((MODENUM+1))
+done > "$HEREDIR"/extmonimodes
+
+echo "~~~ available resolution modes..."
+cat "$HEREDIR"/extmonimodes
+read -p "~~~ select number of resolution mode: " SELMODE
+
+SELRESXY=$(cat "$HEREDIR"/extmonimodes | grep "^$SELMODE" | cut -d ' ' -f 2)
+
+if [ -z "$SELRESXY" ]; then
+    echo "empty string and clean exit."
+    exit 0
+fi
+
+SELRESX=$(echo "$SELRESXY" | cut -d 'x' -f 1)
+SELRESX5=$((SELRESX+5))
+
+echo "~~~ available side options...
+1. Left
+2. Right"
+read -p "~~~ select number of side: " SELSIDE
+
+swaywm_func () {
+    case "$SELSIDE" in
+        1)
+            swaymsg output eDP-1 position $SELRESX5 0 resolution 1920x1080
+            swaymsg output HDMI-A-1 position 0 0 resolution $SELRESXY
+            echo "External Monitor/Screen has been configured on the "$SELSIDE" of eDP-1."
+            ;;
+        2)
+            swaymsg output eDP-1 position 0 0 resolution 1920x1080
+            swaymsg output HDMI-A-1 position 1925 0 resolution $SELRESXY
+            echo "External Monitor/Screen has been configured on the "$SELSIDE" of eDP-1."
+            ;;
+        *)
+            echo "unvalid number of side was selected, clean exit."
+            ;;
+    esac
+}
+
+nonswaywm_func () {
+    case "$SELSIDE" in
+        1)
+            wlr-randr --output eDP-1 --position $SELRESX5 0 --mode 1920x1080
+            wlr-randr --output HDMI-A-1 --position 0 0 --mode $SELRESXY
+            echo "External Monitor/Screen has been configured on the "$SELSIDE" of eDP-1."
+            ;;
+        2)
+            wlr-randr --output eDP-1 --position 0 0 --mode 1920x1080
+            wlr-randr --output HDMI-A-1 --position 1925 0 --mode $SELRESXY
+            echo "External Monitor/Screen has been configured on the "$SELSIDE" of eDP-1."
+            ;;
+        *)
+            echo "unvalid number of side was selected, clean exit."
+            ;;
+    esac
+}
+
+if [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+    swaywm_func
+else
+    nonswaywm_func
+fi
+
+if [ -f "$HEREDIR"/extmonimodes ]; then
+    rm "$HEREDIR"/extmonimodes > /dev/null 2>&1
+fi

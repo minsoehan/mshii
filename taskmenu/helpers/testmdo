@@ -1,0 +1,16 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+gendirectopenscripts_func () {
+    for DOPATH in $(cat "$HEREDIR"/directopenlist); do
+        DD="$(echo "$DOPATH" | sed 's/~\///')"
+        if [ -d ~/"$DD" ]; then
+            echo ""$DOPATH" --- DIR"
+        else
+            echo ""$DOPATH" --- FILE"
+        fi
+        sleep 1
+    done
+}
+gendirectopenscripts_func

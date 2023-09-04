@@ -1,81 +1,92 @@
-# mshii
+#!/bin/dash
 
-This is scripts collection, especially dash scripts, of Min Soe Han for personal.
-It is free for using, editing and distributing.
+HEREDIR="$(dirname "$(readlink -f "$0")")"
 
-2023-08-29 Tuesday 16:59 04:59:31 PM
+testifterminal_func () {
+    case $(ps -o stat= -p $$) in
+        *+*)
+            echo "continue..."
+            sleep 1
+            ;;
+        *)
+            notify-send -t 900 "clean exit" "please run the command in terminal."
+            exit 0
+            ;;
+    esac
+}
 
-$ ii help
-
-    ""|statusboard
+case "$1" in
+    ""|statusboard)
         "$HEREDIR"/statusboard/maintoggle
-        
-    das|dicandsearch
+        ;;
+    das|dicandsearch)
         "$HEREDIR"/taskmenu/dicandsearch
-        
-    tsm|taskscriptmenu
+        ;;
+    tsm|taskscriptmenu)
         "$HEREDIR"/taskmenu/taskscriptmenu
-        
-    dro|directopen
+        ;;
+    dro|directopen)
         "$HEREDIR"/taskmenu/directopen "$2"
-        
-    mkd|makedirectopen
+        ;;
+    mkd|makedirectopen)
         "$HEREDIR"/taskmenu/helpers/makedirectopen "$2"
-        
-    ssm|screenshotmenu
+        ;;
+    ssm|screenshotmenu)
         "$HEREDIR"/taskmenu/screenshotmenu
-        
-    bao|browseandopen
+        ;;
+    bao|browseandopen)
         "$HEREDIR"/taskmenu/browseandopen "$2"
-        
-    bnc|batnoticontrol
+        ;;
+    bnc|batnoticontrol)
         "$HEREDIR"/others/battnoticontrol "$2"
-        
-    adc|audiocontrol
+        ;;
+    adc|audiocontrol)
         "$HEREDIR"/others/audiocontrol "$2"
-        
-    scc|screencontrol
+        ;;
+    scc|screencontrol)
         "$HEREDIR"/others/screencontrol "$2"
-        
-    css|clipboardss
+        ;;
+    css|clipboardss)
         "$HEREDIR"/taskmenu/screenshots/clipboard-ss-Selected-Rectangle
-        
-    sss|swappyss
+        ;;
+    sss|swappyss)
         "$HEREDIR"/taskmenu/screenshots/swappy-ss-Selected-Rectangle
-        
-    sav|selectandview
+        ;;
+    sav|selectandview)
         "$HEREDIR"/selectedview/selectandview
-        
-    pass|password
+        ;;
+    pass|password)
         "$HEREDIR"/taskmenu/taskscripts/Passwords
-        
-    kill
+        ;;
+    kill)
         "$HEREDIR"/others/kill "$2"
-        
-    mur|mshaur
+        ;;
+    mur|mshaur)
         "$HEREDIR"/others/mur "$2" "$3"
-        
-    wifi|mshwifi
+        ;;
+    wifi|mshwifi)
         "$HEREDIR"/others/wificontrol
-        
-    ecf|ecpfs
+        ;;
+    ecf|ecpfs)
         "$HEREDIR"/others/ecpfs "$2" "$3"
-        
-    nsc|newscript
+        ;;
+    nsc|newscript)
         "$HEREDIR"/others/newscript "$2" "$3"
-        
-    ext|extmonitor
+        ;;
+    ext|extmonitor)
         "$HEREDIR"/others/extmonitor
-        
-    ytd|ytdl
+        ;;
+    ytd|ytdl)
         "$HEREDIR"/others/fzytdl "$2"
-        
-    h|help
+        ;;
+    h|help)
         testifterminal_func
         cat "$HEREDIR"/iimanual
         exit 0
-        
-    *
+        ;;
+    *)
         testifterminal_func
         cat "$HEREDIR"/iimanual
         exit 0
+        ;;
+esac

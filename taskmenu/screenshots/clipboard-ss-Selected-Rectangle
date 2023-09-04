@@ -1,0 +1,6 @@
+#!/bin/dash
+
+grim -g "$(slurp)" - | wl-copy
+notify-send -t 900 \
+    "Selected Rectangle Screenshot" \
+    "A screenshot of your selected rectangle has been copied to clipboard."

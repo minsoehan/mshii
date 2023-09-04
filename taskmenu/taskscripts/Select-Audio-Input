@@ -1,0 +1,21 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+notify-send -h string:x-canonical-private-synchronous:daisource \
+    "Default Audio Input (source)" "$(pactl get-default-source)"
+
+SELDAISRC=$(pactl list short sources | cut -f2 | wofi -d)
+CHKDAISRC=$(pactl list short sources | cut -f2 | grep "$SELDAISRC")
+
+if [ -z "$SELDAISRC" ] || [ -z "$CHKDAISRC" ]; then
+    notify-send -t 1800 -h string:x-canonical-private-synchronous:daisource \
+        "clean exit" "empty or not exist."
+    exit 0
+fi
+
+pactl set-default-source "$SELDAISRC" > /dev/null 2>&1
+notify-send -t 9000 -h string:x-canonical-private-synchronous:daisource \
+    "Default Audio Input (source)" "$(pactl get-default-source)"

@@ -1,0 +1,39 @@
+#!/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*) echo "continue..." ;;
+    *) notify-send -t 2700 "clean exit" "please run this script in terminal."; exit 0 ;;
+esac
+
+CHKYTLINK=$(echo "$1" | awk -F '/' '{print $3}')
+if [ "$CHKYTLINK" = "www.youtube.com" ] || [ "$CHKYTLINK" = "youtu.be" ]; then
+    echo "continue..."
+else
+    echo "No YouTube link. clean exit..."
+    exit 0
+fi
+
+TITLE=$(yt-dlp -e "$1")
+echo "check title and type filename
+or leave it blank if it is as the title
+::: title ----> $TITLE"
+read -p "::: filename -> " FILENAME
+if [ -z "$FILENAME" ]; then
+    FILENAME="$TITLE"
+fi
+read -p "select format? (y/N): " SELOPT
+case "$SELOPT" in
+    y|yes|Y|Yes)
+        SELFORMAT=$(yt-dlp -F "$1" | grep 'mp3\|mp4\|m4a\|webm\|3gp' | fzf --reverse --bind \;:down,\':up,[:down,]:up,\\:accept)
+        if [ -z "$SELFORMAT" ]; then
+            echo "empty SELFORMAT. clean exit..."
+            exit 0
+        else
+            FORMATID=$(echo "$SELFORMAT" | cut -d ' ' -f 1)
+            yt-dlp -f "$FORMATID" -o "$FILENAME" "$1"
+        fi
+        ;;
+    *)
+        yt-dlp -o "$FILENAME" "$1"
+        ;;
+esac

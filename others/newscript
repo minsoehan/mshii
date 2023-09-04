@@ -1,0 +1,26 @@
+#!/bin/dash
+
+case $(ps -o stat= -p $$) in
+    *+*) echo "continue..." ;;
+    *) notify-send -t 1800 "clean exit" "the script is to run only in terminal." ;;
+esac
+
+if [ -x ./"$2" ]; then
+    nvim ./"$2"
+else
+    case "$1" in
+        -d)
+            echo '#!/bin/dash\n\n' > ./"$2"
+            chmod +x ./"$2"
+            nvim +3 ./"$2"
+            ;;
+        -b)
+            echo '#!/bin/bash\n\n' > ./"$2"
+            chmod +x ./"$2"
+            nvim +3 ./"$2"
+            ;;
+        *)
+            echo "usage is ~ $ ii nsc -d or -b <scriptname>"
+            ;;
+    esac
+fi

@@ -1,0 +1,21 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+notify-send -h string:x-canonical-private-synchronous:daosink \
+    "Default Audio Output (sink)" "$(pactl get-default-sink)"
+
+SELDAOSINK=$(pactl list short sinks | cut -f2 | wofi -d)
+CHKDAOSINK=$(pactl list short sinks | cut -f2 | grep "$SELDAOSINK")
+
+if [ -z "$SELDAOSINK" ] || [ -z "$CHKDAOSINK" ]; then
+    notify-send -t 1800 -h string:x-canonical-private-synchronous:daosink \
+        "clean exit" "empty or not exist."
+    exit 0
+fi
+
+pactl set-default-sink "$SELDAOSINK" > /dev/null 2>&1
+notify-send -h string:x-canonical-private-synchronous:daosink \
+    "Default Audio Output (sink)" "$(pactl get-default-sink)"

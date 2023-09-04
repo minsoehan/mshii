@@ -1,0 +1,26 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+
+_sbupdate () {
+    SBPER=$(brightnessctl | awk -F '[()]' '/Current brightness: / {print $2}')
+    echo "Screen Brightness: "$SBPER"" > "$BACKDIR"/statusboard/iwaited/screenbrightness
+}
+
+case "$1" in
+    up)
+        brightnessctl -q set +5%
+        _sbupdate
+        ;;
+    down)
+        brightnessctl -q set 5%-
+        _sbupdate
+        ;;
+    update)
+        _sbupdate
+        ;;
+    *)
+        notify-send -t 9000 "Do one of the followings;" "up or down"
+        ;;
+esac

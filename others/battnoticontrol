@@ -1,0 +1,31 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+
+BNSF=""$BACKDIR"/statusboard/iwaited/batnotistate"
+
+BNF="/tmp/mshbattnotionoff"
+BNS="$(cat "$BNF")"
+
+case "$1" in
+    update)
+        if [ $((BNS)) -eq 1 ]; then
+            echo " Noti-ON" > "$BNSF"
+        else
+            echo " Noti-OFF" > "$BNSF"
+        fi
+        ;;
+    toggle)
+        if [ $((BNS)) -eq 1 ]; then
+            echo "0" > "$BNF"
+            echo " Noti-OFF" > "$BNSF"
+        else
+            echo "1" > "$BNF"
+            echo " Noti-ON" > "$BNSF"
+        fi
+        ;;
+    *)
+        notify-send -t 1800 "clean exit" "do update or toggle."
+        ;;
+esac

@@ -1,0 +1,15 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+MENU1=""$HEREDIR"/helpers/menumaker1"
+
+cd "$HEREDIR"/taskscripts
+
+SELSCRIPT=$(ls . | "$MENU1")
+
+if [ -f "$SELSCRIPT" ] && [ -x "$SELSCRIPT" ]; then
+    ./"$SELSCRIPT"
+else
+    notify-send -t 900 "clean exit" "empty or not exit or not excutable."
+fi

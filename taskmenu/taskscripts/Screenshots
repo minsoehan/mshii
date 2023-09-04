@@ -1,0 +1,14 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU2=""$BACKDIR"/helpers/menumaker2"
+
+cd "$BACKDIR"/screenshots
+
+SELSCRIPT=$(ls . | "$MENU2")
+if [ -x "$SELSCRIPT" ]; then
+    ./"$SELSCRIPT"
+else
+    notify-send -t 2700 "clean exit" "empty or not exist."
+fi

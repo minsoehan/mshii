@@ -1,0 +1,73 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+wmpl_func () {
+    case "$1" in
+        bui)
+            mplayer -title "mshfloat" \
+                tv:// -tv driver=v4l2:width=450:height=350:device=/dev/video0 \
+                -fps 60 -vf screenshot & > /dev/null 2>&1
+            ;;
+        ext)
+            mplayer -title "mshfloat" \
+                tv:// -tv driver=v4l2:width=450:height=350:device=/dev/video2 \
+                -fps 60 -vf screenshot & > /dev/null 2>&1
+            ;;
+        *)
+            notify-send -t 900 "clean exit" "do bui (built-in) or ext (external)."
+            ;;
+    esac
+}
+
+wmpv_func () {
+    case "$1" in
+        bui)
+            mpv av://v4l2:/dev/video0 --profile=low-latency --untimed --autofit=35% & > /dev/null 2>&1
+            ;;
+        ext)
+            mpv av://v4l2:/dev/video2 --profile=low-latency --untimed --autofit=35% & > /dev/null 2>&1
+            ;;
+        *)
+            notify-send -t 900 "clean exit" "do bui (built-in) or ext (external)."
+            ;;
+    esac
+}
+
+WCSEL=$(echo "video0 (Built-In)\nvideo2 (External)" | "$MENU1")
+
+case "$WCSEL" in
+    "video0 (Built-In)")
+        WMSEL=$(echo "MPV\nMPlayer" | "$MENU1")
+        case "$WMSEL" in
+            MPV)
+                wmpv_func bui
+                ;;
+            MPlayer)
+                wmpl_func bui
+                ;;
+            *)
+                notify-send -t 900 "clean exit" "MPV nor MPlayer"
+                ;;
+        esac
+        ;;
+    "video2 (External)")
+        WMSEL=$(echo "MPV\nMPlayer" | "$MENU1")
+        case "$WMSEL" in
+            MPV)
+                wmpv_func ext
+                ;;
+            MPlayer)
+                wmpl_func ext
+                ;;
+            *)
+                notify-send -t 900 "clean exit" "MPV nor MPlayer"
+                ;;
+        esac
+        ;;
+    *)
+        notify-send -t 900 "clean exit" "do video0 (Built-In) or video2 (External)."
+        ;;
+esac

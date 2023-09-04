@@ -1,0 +1,45 @@
+#!/bin/dash
+
+if [ "$XDG_CURRENT_DESKTOP" = "sway" ]; then
+    notify-send -t 1800 "clean exit" "this is sway wm. use sway-HDMI-A-1."
+    exit 0
+fi
+
+CKSTATUS=$(cat /sys/class/drm/card1-HDMI-A-1/status)
+if [ "$CKSTATUS" = "disconnected" ]; then
+    notify-send -t 1800 "clean exit" "HDMI-A-1 is disconnected."
+    exit 0
+fi
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+BACKDIR="$(dirname "$HEREDIR")"
+MENU1=""$BACKDIR"/helpers/menumaker1"
+
+SELRESXY=$(cat /sys/class/drm/card1-HDMI-A-1/modes | "$MENU1")
+CHKRESXY=$(cat /sys/class/drm/card1-HDMI-A-1/modes | grep "$SELRESXY")
+if [ -z "$SELRESXY" ] || [ -z "$CHKRESXY" ]; then
+    notify-send -t 1800 "clean exit" "empty or not exist."
+    exit 0
+fi
+
+SELRESX=$(echo "$SELRESXY" | cut -d 'x' -f 1)
+SELRESX5=$((SELRESX+5))
+# SELRESY=$(echo "$SELRESXY" | cut -d 'x' -f 2)
+# SELRESY5=$((SELRESY+5))
+
+SELSIDE=$(echo "LEFT\nRIGHT" | "$MENU1")
+case "$SELSIDE" in
+    LEFT)
+        wlr-randr --output eDP-1 --pos $SELRESX5,0 --mode 1920x1080
+        wlr-randr --output HDMI-A-1 --pos 0,0 --mode $SELRESXY
+        notify-send -t 5000 "External Monitor/Screen" "HDMI-A-1 has been configured\non the "$SELSIDE" of eDP-1."
+        ;;
+    RIGHT)
+        wlr-randr --output eDP-1 --pos 0,0 --mode 1920x1080
+        wlr-randr --output HDMI-A-1 --pos $SELRESX5,0 --mode "$SELRESXY"
+        notify-send -t 5000 "External Monitor/Screen" "HDMI-A-1 has been configured\non the "$SELSIDE" of eDP-1."
+        ;;
+    *)
+        notify-send -t 1800 "clean exit" "do Left or Right."
+        ;;
+esac

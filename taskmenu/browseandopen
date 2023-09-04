@@ -1,0 +1,22 @@
+#!/bin/dash
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+MENU2=""$HEREDIR"/helpers/menumaker2"
+
+if [ -d "$1" ]; then
+    cd "$1"
+else
+    cd ~
+fi
+
+while true; do
+    DFOPEN=$(ls -a --group-directories-first --file-type -- . | grep -v "^\.[a-zA-Z0-9]\|^\./" | "$MENU2")
+    if [ -d "$DFOPEN" ]; then
+        cd "$DFOPEN"
+    else
+        if [ -f "$DFOPEN" ]; then
+            xdg-open "$DFOPEN" &
+        fi
+        break
+    fi
+done

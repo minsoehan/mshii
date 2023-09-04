@@ -1,0 +1,57 @@
+#!/bin/dash
+
+echo "Installing is just creating symlink as below:
+/PATH/ii to ./masterii
+Where you want to install it to?
+0) Exit
+1) user level
+2) system wide"
+read -p "::: Select: " SELOPT
+
+HEREDIR="$(dirname "$(readlink -f "$0")")"
+
+userlevelinstall_func () {
+    USERPATH=$(echo $PATH | sed 's/:/\n/g' | grep "/home/")
+    if [ -z "$USERPATH" ]; then
+        echo "::: You have no excutable PATH in your home directory.
+::: You will neet to set excutable PATH in your home directory first.
+::: Recommended way is putting the following in ~/.bash_profile file.
+::: export PATH=\"\${PATH}:/home/username/.local/bin\""
+    else
+        echo "::: give symlink name or\n::: leave it blank for default name as \"ii\""
+        read -p "::: type name or leave blank: " SLINKNAME
+        if [ -z "$SLINKNAME" ]; then
+            ln -s "$HEREDIR"/masterii "$USERPATH"/ii
+        else
+            ln -s "$HEREDIR"/masterii "$USERPATH"/"$SLINKNAME"
+        fi
+    fi
+}
+
+systemwideinstall_func () {
+    echo "::: It is goining to be installed to /usr/local/bin.
+::: You will need to type your password.
+::: give symlink name or
+::: leave it blank for default name as \"ii\""
+    read -p "::: type name or leave blank: " SLINKNAME
+    if [ -z "$SLINKNAME" ]; then
+        sudo ln -s "$HEREDIR"/masterii /usr/local/bin/ii
+    else
+        sudo ln -s "$HEREDIR"/masterii /usr/local/bin/"$SLINKNAME"
+    fi
+}
+
+case "$SELOPT" in
+    0)
+        exit 0
+        ;;
+    1)
+        userlevelinstall_func
+        ;;
+    2)
+        systemwideinstall_func
+        ;;
+    *)
+        exit 0
+        ;;
+esac
